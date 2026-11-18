@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 selftest/cordis.yml
 .local/
+
+# npm pack artifacts
+*.tgz
