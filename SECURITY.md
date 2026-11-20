@@ -7,16 +7,16 @@ match each flagged call site to a documented decision.
 
 ## The only code-execution point
 
-`lib/index.js` — one `spawnSync` call:
+`lib/index.js` — one asynchronous `spawn` call (single call site, wrapped in `runChild()`):
 
 ```js
-spawnSync(nodePath, [runnerPath, jobPath], {
-  shell: false,          // argv array, never a shell string
+spawn(nodePath, [runnerPath, jobPath], {
+  shell: false,                       // argv array, never a shell string
   windowsHide: true,
-  maxBuffer: 4 * 1024 * 1024,
-  timeout: args.timeoutMs ?? 120000,
+  detached: process.platform !== 'win32',  // POSIX: own process group, so the tree can be killed
   stdio: ['ignore', 'pipe', 'pipe'],  // child does not inherit stdin
-  cwd: jobDir,           // fresh mkdtemp() directory
+  cwd: jobDir,                        // fresh mkdtemp() directory
+  env: buildEnv(config.childEnv),     // allowlist, not the parent's whole environment
 });
 ```
 
@@ -25,10 +25,14 @@ Constraints that hold for every call:
 | Constraint | Mechanism |
 |---|---|
 | No shell interpolation | `shell: false`; executable and args are separate argv entries |
-| Executable is a local Node binary | `resolveNodePath()` only accepts an existing file, else the DSH-bundled runtime, else `node` |
+| Executable is a local Node binary | `resolveNodePath()` accepts an explicit path, `DSH_LAB_NODE`, or the DSH-bundled runtime — it no longer falls back to a bare `node` from PATH |
 | Exactly two arguments | the bundled `runner/child.mjs` and the `job.json` this tool just wrote |
-| Bounded runtime | `timeout` (default 120 s) + 4 MiB output buffer |
-| Isolated working dir | `mkdtempSync(tmpdir()/plugin-lab-)`, removed after the run unless `keep: true` |
+| Bounded runtime | `timeoutMs` validated to 1–600000 ms (default 120000; `0` means default, not "no timeout") |
+| Bounded output | 4 MiB per stream, then truncated with a flag |
+| No event-loop stall | async `spawn` + Promise; the previous `spawnSync` froze the whole DSH process for the duration of the run |
+| Tree cleanup on timeout | `taskkill /PID <pid> /T /F` on Windows, `process.kill(-pgid)` on POSIX; a 3 s grace timer forces settlement |
+| Tree cleanup on success | the runner runs `taskkill /T /F` on itself (POSIX: kills its own group) **after** writing `verdict.json`, so processes a scenario spawned cannot outlive the run |
+| Isolated working dir | `mkdtempSync(tmpdir()/plugin-lab-)`; removed with 4 backoff attempts, and a failure is logged to `boot.log` and returned as `cleanupFailed: true` instead of being swallowed |
 | No inherited stdin | `stdio: ['ignore','pipe','pipe']` |
 
 What the child then does is the documented product behaviour: create a cordis Context through the
@@ -36,14 +40,35 @@ same `boot()` the DSH desktop uses, mount `target` (absolute path), and run the 
 the caller listed. `target` and `scenarios` are therefore **caller-supplied local paths** — the
 trust boundary is the user invoking `lab.run`, not the package.
 
+## Environment handling
+
+The child no longer receives the parent's whole environment. `buildEnv()` passes:
+
+- a fixed base list (`PATH`, `SystemRoot`, `TEMP`/`TMP`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA`,
+  `HOME`, `LANG`, `TZ`, …) so Node and the DSH runtime can start normally;
+- `DSH_*` variables **except** any whose name matches `TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|CREDENTIAL|PRIVATE_KEY|AUTH`;
+- anything the operator explicitly sets in `config.childEnv`.
+
+API keys, tokens and credentials held by the host process are therefore not visible to mounted
+third-party plugin code.
+
+## Input validation
+
+- `target` must be a non-empty string that exists, and must resolve to `*.js`/`*.mjs` or a
+  directory containing `lib/index.js`; an empty string is rejected instead of silently resolving
+  to the caller's working directory.
+- every `scenarios` entry must exist **and be a file** (a directory is rejected up front).
+- `timeoutMs` rejects negative, non-integer and >600000 values with a message, instead of letting
+  Node's native `ERR_OUT_OF_RANGE` surface to the model.
+
 ## What the package does not do
 
 - No network access, no telemetry, no update checks.
 - No npm dependencies at all: `@deepseek-ai/*` services are resolved from the user's own DSH
   installation at runtime; nothing private is declared, bundled or redistributed.
-- No filesystem writes outside (`os.tmpdir()`) and `~/.dsh/plugin-lab/` (one `boot.log` line
-  per mount, used as the machine-checkable "wired" evidence).
-- No credential reads, no environment scraping beyond the resolver's `DSH_LAB_*` variables.
+- No filesystem writes outside `os.tmpdir()` and `~/.dsh/plugin-lab/` (one `boot.log` line per
+  mount, plus `cleanup-failed` records).
+- No credential reads, and no credential inheritance into the child (see above).
 
 ## Residual risk (honest statement)
 
