@@ -11,13 +11,28 @@
 每次发版把可校验的 tarball 挂在 [Releases](https://github.com/Oseas031/dsh-plugin-lab/releases)，
 安装量以 release 资产下载数为准（GitHub Insights 的 clone 计数包含扫描器与镜像抓取，不代表有人安装）。
 
-- v0.1.3 — `dsh-plugin-lab-0.1.3.tgz`（npm pack 产物，17 files / 16.8 kB）
+- v0.1.5 — `dsh-plugin-lab-0.1.5.tgz`（npm pack 产物）
 
 ## 安装
 
+两种方式等价，二选一：
+
 ```bash
+# 1) 从 GitHub 直装（拿到 main 的最新提交）
 dsh plugin add github:Oseas031/dsh-plugin-lab
+
+# 2) 从 npm 装（latest = 0.1.5，可钉版本）
+npm i dsh-plugin-lab@0.1.5
 ```
+
+npm 侧：包名 `dsh-plugin-lab`，维护者 `osea31`，`latest` 已指到 `0.1.5`。核对官方版本务必带 registry 参数——
+本机 npm 若指向 `registry.npmmirror.com` 镜像，`npm view` 会显示滞后的旧版本：
+
+```bash
+npm view dsh-plugin-lab version --registry=https://registry.npmjs.org
+```
+
+装完仍需把包列入 profile 的 `dsh.profile.bundles`（见下）。
 
 或直接装进 profile：profile package.json 加 `"dsh-plugin-lab": "file:<本包路径>"` 并列入 `dsh.profile.bundles`。
 挂载后该 profile 所有会话可用 `lab.run` 工具（开发 profile 用；生产 profile 慎装——见 dsh.patch.yml）。
