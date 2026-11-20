@@ -63,6 +63,14 @@ export default async ({ ctx, defs, step, jobDir, targetEntry, targetConfig }) =>
 - 目标插件按**绝对路径**挂载——改码即生效，下一次 lab.run 拿新的
 - 官方 `@deepseek-ai/*` 服务经 `bareModuleBaseUrl` 从**本机 DSH 安装**解析（Loader 的官方内嵌通道）
 
+## 安全边界
+
+本包按设计会执行本地代码——它就是在子进程里 boot 真实 cordis 并挂载你指定的插件。唯一的
+code-exec 点是 `lib/index.js` 里的那一次 `spawnSync`：argv 数组传参、`shell: false`、固定只跑
+内置 `runner/child.mjs` + 刚写出的 `job.json`、限时 120s、4 MiB 输出缓冲、独立 mkdtemp 工作目录、
+不继承 stdin。无网络、无遥测、零 npm 依赖。静态扫描器一定会标 `child_process` 导入，那正是功能本体；
+逐条约束与残余风险见 [SECURITY.md](./SECURITY.md)。
+
 ## 兼容性与许可边界
 
 - MIT（本包代码）。**零 npm 依赖**：不声明、不分发任何 @deepseek-ai 私有包；运行时从用户自己的 DSH 安装解析。
