@@ -1,0 +1,19 @@
+# 试验：REA compact MCP 网关（3 个元工具替代 207 个工具定义）
+# 装到开发 profile 后重启 DSH 生效；卸载即回到全量 207 工具。
+- insert:
+    - id: rea-compact-gateway
+      name: 'dsh-mcp-compact-gateway'
+    - id: rea-compact-mcp
+      name: "@deepseek-ai/dsh-mcp-client"
+      config:
+        serverName: rea
+        transport: stdio
+        command: 'C:/Program Files/nodejs/node.exe'
+        args:
+          - 'E:/dsh-plugin-lab/example/rea-compact-gateway/gateway.mjs'
+        # gateway 自动探测 rea-agents 的安装位置（APPDATA\npm\node_modules）。
+        # 需要 Ghidra/Jadx provider 时，按真机补：
+        # env:
+        #   GHIDRA_INSTALL_DIR: C:/ghidra_12.1.4_PUBLIC
+        #   JAVA_HOME: C:/Users/ASUS/.jdks/ms-21.0.9
+        #   REA_JADX_MCP_JAR: C:/Users/ASUS/.dsh/rea-tools/jadx/jadx-headless-mcp-0.7.1-all.jar

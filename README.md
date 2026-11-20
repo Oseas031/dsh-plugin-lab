@@ -6,6 +6,13 @@
 
 自带最小示例：`example/fixture-plugin` + `example/scenarios/fixture.mjs`（`node selftest/run.mjs` 一键自测）。
 
+## 发布物
+
+每次发版把可校验的 tarball 挂在 [Releases](https://github.com/Oseas031/dsh-plugin-lab/releases)，
+安装量以 release 资产下载数为准（GitHub Insights 的 clone 计数包含扫描器与镜像抓取，不代表有人安装）。
+
+- v0.1.3 — `dsh-plugin-lab-0.1.3.tgz`（npm pack 产物，17 files / 16.8 kB）
+
 ## 安装
 
 ```bash

@@ -1,0 +1,20 @@
+{
+  "name": "dsh-mcp-compact-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "description": "试验：把 REA 的 207 个 MCP 工具收成 3 个元工具（catalog/describe/invoke）的 stdio 网关，tools/list 3.16 MB → 2 KB。",
+  "files": [
+    "lib",
+    "gateway.mjs",
+    "dsh.patch.yml",
+    "scenarios",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh.patch.yml"
+    }
+  }
+}
