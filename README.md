@@ -4,30 +4,23 @@
 的子进程里挂载你的插件、跑你的验收场景，回传逐项 PASS/FAIL 与 verdict。与 DSH 桌面进程同一启动路径
 （@deepseek-ai/dsh-app-boot 的 boot()），不是 mock。
 
-自带最小示例：`example/fixture-plugin` + `example/scenarios/fixture.mjs`（`node selftest/run.mjs` 一键自测）。
+自带最小示例：`example/fixture-plugin` + `example/scenarios/fixture.mjs`（`npm run selftest` 一键自测，离线单测 `npm test`）。
 
-## 发布物
+## 版本记录
 
-每次发版把可校验的 tarball 挂在 [Releases](https://github.com/Oseas031/dsh-plugin-lab/releases)，
-安装量以 release 资产下载数为准（GitHub Insights 的 clone 计数包含扫描器与镜像抓取，不代表有人安装）。
-
-- v0.2.0 — `dsh-plugin-lab-0.2.0.tgz`（npm pack 产物；P0 加固版）
-- v0.1.5 — `dsh-plugin-lab-0.1.5.tgz`（npm pack 产物）
+版本变化见 [CHANGELOG.md](./CHANGELOG.md)。每次发布资产以对应的 Release 记录或包快照为准；本地开发版本与远端/npm 发布状态相互独立。
 
 ## 安装
-
-两种方式等价，二选一：
 
 ```bash
 # 1) 从 GitHub 直装（拿到 main 的最新提交）
 dsh plugin add github:Oseas031/dsh-plugin-lab
 
-# 2) 从 npm 装（latest = 0.2.0，可钉版本）
-npm i dsh-plugin-lab@0.2.0
+# 2) 从 npm 装
+npm i dsh-plugin-lab
 ```
 
-npm 侧：包名 `dsh-plugin-lab`，维护者 `osea31`，`latest` 已指到 `0.2.0`。核对官方版本务必带 registry 参数——
-本机 npm 若指向 `registry.npmmirror.com` 镜像，`npm view` 会显示滞后的旧版本：
+核对 npm 注册表版本时建议显式指定官方源（避免本地镜像缓存滞后）：
 
 ```bash
 npm view dsh-plugin-lab version --registry=https://registry.npmjs.org
@@ -47,16 +40,30 @@ npm view dsh-plugin-lab version --registry=https://registry.npmjs.org
   "target": "E:/x/dsh-foo",
   "config": { "anyConfig": true },
   "scenarios": ["E:/x/dsh-foo/scenarios/contract.mjs"],
+  "services": ["@deepseek-ai/dsh-skill"],
   "timeoutMs": 120000,
   "keep": false
 }
 ```
 
-返回：`{ pass, total, passed, failed[], dshVersion?, durationMs, timedOut?, stdoutTail[], stderrTail[], jobDir?, cleanupFailed? }`。
+- `services`（可选）：额外挂载的 DSH 官方基础服务包名，仅放行 `@deepseek-ai/dsh-[a-z0-9-]+`（默认已包含 `dsh-system-prompt` 与 `dsh-tools`，重复项自动去重）。
+- 返回：`{ pass, total, passed, failed[], dshVersion?, durationMs, timedOut?, stdoutTail[], stderrTail[], jobDir?, cleanupFailed? }`。
 
 `timedOut: true` 表示子进程超时被杀（此时 `failed` 会说明超时，`total/passed` 从 stdout 里回收已跑完的步骤，不再整份丢掉）。
 
 ## 用法（CLI，不进会话）
+
+独立 CLI（`dsh-plugin-lab` / `node bin/dsh-plugin-lab.mjs`）：
+
+```bash
+node bin/dsh-plugin-lab.mjs \
+  --target E:/x/dsh-foo \
+  --scenario E:/x/dsh-foo/scenarios/contract.mjs \
+  --service @deepseek-ai/dsh-skill \
+  --config '{"anyConfig":true}'
+```
+
+底层 runner 也可直接调用预先准备好的 `job.json`：
 
 ```bash
 node runner/child.mjs job.json

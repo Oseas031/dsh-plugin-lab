@@ -1,0 +1,76 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run offline unit tests
+        run: npm test
+      - name: Inspect package contents on Node 24
+        if: matrix.node == 24
+        env:
+          PACK_JSON: pack-dry-run.json
+        run: |
+          npm pack --dry-run --json > "$PACK_JSON"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { extname } from 'node:path';
+
+          const reports = JSON.parse(readFileSync(process.env.PACK_JSON, 'utf8'));
+          if (!Array.isArray(reports) || reports.length !== 1) {
+            throw new Error('npm pack --dry-run --json did not return one package report');
+          }
+          const report = reports[0];
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const packed = new Set(report.files.map(file => file.path));
+          const required = [
+            'package.json',
+            pkg.main,
+            ...Object.values(pkg.bin ?? {}),
+            'dsh.patch.yml',
+            'README.md',
+            'SECURITY.md',
+            'CHANGELOG.md',
+            'LICENSE',
+            'lib/resolve-dsh.js',
+            'runner/child.mjs',
+            'selftest/run.mjs',
+            'example/fixture-plugin/lib/index.js',
+            'example/scenarios/fixture.mjs',
+            'test/unit.test.mjs',
+          ];
+          const missing = required.filter(path => !packed.has(path));
+          if (missing.length) throw new Error('Missing packed files: ' + missing.join(', '));
+          if (report.name !== pkg.name || report.version !== pkg.version) {
+            throw new Error('Packed name/version differs from package.json');
+          }
+
+          const localPath = /C:[\\/]+Users[\\/]+ASUS|E:[\\/]+hack4clawsgo|hack4claws|clawsgo/i;
+          const textExtensions = new Set(['.js', '.mjs', '.json', '.yml', '.yaml', '.md', '.txt']);
+          for (const file of report.files) {
+            if (localPath.test(file.path)) throw new Error('Forbidden local path in packed path: ' + file.path);
+            if (!textExtensions.has(extname(file.path)) && file.path !== 'LICENSE') continue;
+            const text = readFileSync(file.path, 'utf8');
+            if (localPath.test(text)) throw new Error('Forbidden local path/brand token in file: ' + file.path);
+          }
+          const generated = [...packed].filter(path => path.includes('/.local/') || path.endsWith('.tgz') || path.startsWith('dist/') || path === 'selftest/cordis.yml');
+          if (generated.length) throw new Error('Generated artifacts packed: ' + generated.join(', '));
+          console.log('PACK PASS | ' + packed.size + ' files | v' + report.version);
+          NODE

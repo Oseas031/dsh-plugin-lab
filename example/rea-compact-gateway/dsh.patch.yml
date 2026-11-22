@@ -15,5 +15,5 @@
         # 需要 Ghidra/Jadx provider 时，按真机补：
         # env:
         #   GHIDRA_INSTALL_DIR: C:/ghidra_12.1.4_PUBLIC
-        #   JAVA_HOME: C:/Users/ASUS/.jdks/ms-21.0.9
-        #   REA_JADX_MCP_JAR: C:/Users/ASUS/.dsh/rea-tools/jadx/jadx-headless-mcp-0.7.1-all.jar
+        #   JAVA_HOME: C:/Users/<user>/.jdks/ms-21.0.9
+        #   REA_JADX_MCP_JAR: C:/Users/<user>/.dsh/rea-tools/jadx/jadx-headless-mcp-0.7.1-all.jar

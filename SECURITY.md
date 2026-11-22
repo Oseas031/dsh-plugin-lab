@@ -57,9 +57,13 @@ third-party plugin code.
 - `target` must be a non-empty string that exists, and must resolve to `*.js`/`*.mjs` or a
   directory containing `lib/index.js`; an empty string is rejected instead of silently resolving
   to the caller's working directory.
+- `services` (optional) only permits `@deepseek-ai/dsh-[a-z0-9-]+` package identifiers (deduplicated
+  and skipping default services), blocking path traversal, absolute paths, and arbitrary npm packages.
 - every `scenarios` entry must exist **and be a file** (a directory is rejected up front).
 - `timeoutMs` rejects negative, non-integer and >600000 values with a message, instead of letting
   Node's native `ERR_OUT_OF_RANGE` surface to the model.
+- the standalone CLI (`bin/dsh-plugin-lab.mjs`) delegates directly to the same `runLab()` path, so
+  every input guard, allowlisted env, and tree cleanup rule applies identically outside DSH sessions.
 
 ## What the package does not do
 
