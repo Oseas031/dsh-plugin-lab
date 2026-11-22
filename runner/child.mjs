@@ -32,7 +32,29 @@ function reapDescendants() {
   } catch { /* 已经没有可杀的，或权限不足；不拦退出 */ }
 }
 
-const ctx = await boot('plugin-lab', job.ymlPath, [], undefined, bareBase);
+/** 调用 DSH app-boot 并附带清晰的运行时兼容诊断（dshVersion / boot.length）。 */
+async function invokeBoot(bootFn, ymlPath, bareBase, ver, bootUrl) {
+  if (typeof bootFn !== 'function') {
+    throw new Error('dsh-plugin-lab 兼容错误: app-boot 未导出 boot 函数 (dshVersion=' + String(ver) + ', url=' + bootUrl + ')');
+  }
+  let ctx;
+  try {
+    ctx = await bootFn('plugin-lab', ymlPath, [], undefined, bareBase);
+  } catch (err) {
+    throw new Error(
+      'dsh-plugin-lab boot() 调用失败 (dshVersion=' + String(ver) + ', boot.length=' + bootFn.length + '): '
+      + String(err?.message ?? err)
+    );
+  }
+  if (!ctx || !ctx.tools || typeof ctx.tools.definitions !== 'function') {
+    throw new Error(
+      'dsh-plugin-lab 兼容错误: boot() 返回异常上下文 (dshVersion=' + String(ver) + ', boot.length=' + bootFn.length + ', hasTools=' + Boolean(ctx?.tools) + ')'
+    );
+  }
+  return ctx;
+}
+
+const ctx = await invokeBoot(boot, job.ymlPath, bareBase, dshVersion, appBootUrl);
 try {
   const defs = ctx.tools.definitions(undefined);
   for (const s of job.scenarioPaths) {

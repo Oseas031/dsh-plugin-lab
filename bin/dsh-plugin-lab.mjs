@@ -9,16 +9,18 @@ import { PKG_VERSION, runLab } from '../lib/index.js';
 const USAGE = `用法: dsh-plugin-lab --target <path> --scenario <file> [options]
 
 选项:
-  --target <path>         待验插件目录（含 lib/index.js）或入口 .js/.mjs 文件
-  --scenario <file>       验收场景文件（可重复传入或用逗号分隔）
-  --config <json|file>    传给插件 apply(ctx, config) 的 JSON 对象或 JSON 文件路径
-  --service <pkg>         额外挂载的 DSH 官方服务（@deepseek-ai/dsh-*，可重复或逗号分隔）
-  --timeout <ms>          子进程超时毫秒（1–600000，默认 120000）
-  --keep                  保留临时 job 目录供排障
-  --dsh-root <dir>        显式指定 DSH 安装根
-  --node <path>           显式指定子进程 node 可执行文件路径
-  -v, --version           输出版本号
-  -h, --help              显示帮助`;
+  --target <path>             待验插件目录（含 lib/index.js）或入口 .js/.mjs 文件
+  --scenario <file>           验收场景文件（可重复传入或用逗号分隔）
+  --config <json|file>        传给插件 apply(ctx, config) 的 JSON 对象或 JSON 文件路径
+  --service <pkg>             额外挂载的 DSH 官方服务（@deepseek-ai/dsh-*，可重复或逗号分隔）
+  --service-config <json|file> 按服务包名指定配置对象（键必须为 @deepseek-ai/dsh-*）
+  --dsh-home <dir>            子进程隔离的 DSH_HOME/HOME/USERPROFILE 目录路径
+  --timeout <ms>              子进程超时毫秒（1–600000，默认 120000）
+  --keep                      保留临时 job 目录供排障
+  --dsh-root <dir>            显式指定 DSH 安装根
+  --node <path>               显式指定子进程 node 可执行文件路径
+  -v, --version               输出版本号
+  -h, --help                  显示帮助`;
 
 function parseArgs(argv) {
   const opts = { scenarios: [], services: [], keep: false };
@@ -49,6 +51,8 @@ function parseArgs(argv) {
       case '--target': opts.target = value; break;
       case '--scenario': opts.scenarios.push(...splitList(value)); break;
       case '--service': opts.services.push(...splitList(value)); break;
+      case '--service-config': opts.serviceConfigRaw = value; break;
+      case '--dsh-home': opts.dshHome = value; break;
       case '--config': opts.configRaw = value; break;
       case '--timeout': opts.timeoutMs = Number(value); break;
       case '--dsh-root': opts.dshRoot = value; break;
@@ -59,7 +63,7 @@ function parseArgs(argv) {
   return opts;
 }
 
-function parseConfig(raw) {
+function parseJsonObject(raw, flagName = '--config') {
   if (raw === undefined) return undefined;
   const trimmed = String(raw).trim();
   let text = trimmed;
@@ -68,10 +72,10 @@ function parseConfig(raw) {
   }
   let parsed;
   try { parsed = JSON.parse(text); } catch (e) {
-    throw new Error('--config 不是合法 JSON: ' + String(e?.message ?? e));
+    throw new Error(flagName + ' 不是合法 JSON: ' + String(e?.message ?? e));
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('--config 必须是 JSON 对象');
+    throw new Error(flagName + ' 必须是 JSON 对象');
   }
   return parsed;
 }
@@ -97,8 +101,10 @@ try {
   const result = await runLab({
     target: opts.target,
     scenarios: opts.scenarios,
-    ...(opts.configRaw !== undefined ? { config: parseConfig(opts.configRaw) } : {}),
+    ...(opts.configRaw !== undefined ? { config: parseJsonObject(opts.configRaw, '--config') } : {}),
     ...(opts.services.length > 0 ? { services: opts.services } : {}),
+    ...(opts.serviceConfigRaw !== undefined ? { serviceConfigs: parseJsonObject(opts.serviceConfigRaw, '--service-config') } : {}),
+    ...(opts.dshHome ? { dshHome: opts.dshHome } : {}),
     ...(opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : {}),
     keep: opts.keep,
     ...(opts.dshRoot ? { dshRoot: opts.dshRoot } : {}),

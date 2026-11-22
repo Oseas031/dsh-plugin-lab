@@ -40,16 +40,20 @@ npm view dsh-plugin-lab version --registry=https://registry.npmjs.org
   "target": "E:/x/dsh-foo",
   "config": { "anyConfig": true },
   "scenarios": ["E:/x/dsh-foo/scenarios/contract.mjs"],
-  "services": ["@deepseek-ai/dsh-skill"],
+  "services": ["@deepseek-ai/dsh-skill", { "name": "@deepseek-ai/dsh-tools", "config": { "strict": true } }],
+  "serviceConfigs": { "@deepseek-ai/dsh-skill": { "skillDirs": [] } },
+  "dshHome": "E:/tmp/isolated-dsh-home",
   "timeoutMs": 120000,
   "keep": false
 }
 ```
 
-- `services`（可选）：额外挂载的 DSH 官方基础服务包名，仅放行 `@deepseek-ai/dsh-[a-z0-9-]+`（默认已包含 `dsh-system-prompt` 与 `dsh-tools`，重复项自动去重）。
-- 返回：`{ pass, total, passed, failed[], dshVersion?, durationMs, timedOut?, stdoutTail[], stderrTail[], jobDir?, cleanupFailed? }`。
+- `services`（可选）：额外挂载的 DSH 官方基础服务（字符串包名或 `{ name, config }` 对象），仅放行 `@deepseek-ai/dsh-[a-z0-9-]+`（默认已包含 `dsh-system-prompt` 与 `dsh-tools`，重复项自动去重）。
+- `serviceConfigs`（可选）：按官方服务包名传入 cordis 配置对象，键同样限定 `@deepseek-ai/dsh-*`。
+- `dshHome`（可选）：为子进程创建隔离的 `DSH_HOME`/`HOME`/`USERPROFILE` 目录，避免污染宿主桌面配置。
+- 返回：`{ pass, total, passed, failed[], dshVersion?, durationMs, timedOut?, aborted?, stdoutTail[], stderrTail[], jobDir?, cleanupFailed? }`。
 
-`timedOut: true` 表示子进程超时被杀（此时 `failed` 会说明超时，`total/passed` 从 stdout 里回收已跑完的步骤，不再整份丢掉）。
+`timedOut: true` 表示子进程超时被杀；`aborted: true` 表示通过 `AbortSignal` 提前中止并清理进程树（`total/passed` 会从 stdout 尽量回收已完成步骤）。
 
 ## 用法（CLI，不进会话）
 
@@ -60,6 +64,8 @@ node bin/dsh-plugin-lab.mjs \
   --target E:/x/dsh-foo \
   --scenario E:/x/dsh-foo/scenarios/contract.mjs \
   --service @deepseek-ai/dsh-skill \
+  --service-config '{"@deepseek-ai/dsh-skill":{"skillDirs":[]}}' \
+  --dsh-home E:/tmp/isolated-dsh-home \
   --config '{"anyConfig":true}'
 ```
 

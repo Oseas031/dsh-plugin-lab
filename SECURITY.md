@@ -57,8 +57,10 @@ third-party plugin code.
 - `target` must be a non-empty string that exists, and must resolve to `*.js`/`*.mjs` or a
   directory containing `lib/index.js`; an empty string is rejected instead of silently resolving
   to the caller's working directory.
-- `services` (optional) only permits `@deepseek-ai/dsh-[a-z0-9-]+` package identifiers (deduplicated
-  and skipping default services), blocking path traversal, absolute paths, and arbitrary npm packages.
+- `services` (optional) only permits `@deepseek-ai/dsh-[a-z0-9-]+` package identifiers or `{ name, config }` objects with pure object configs (deduplicated and skipping default services), blocking path traversal, absolute paths, and arbitrary npm packages.
+- `serviceConfigs` (optional) validates every key against `@deepseek-ai/dsh-[a-z0-9-]+` and enforces plain-object configs before writing `cordis.yml`.
+- `dshHome` (optional) creates an isolated directory and overrides `DSH_HOME`, `HOME`, and `USERPROFILE` solely inside the child process environment.
+- `AbortSignal` propagation (`exec.signal` in tool execution and `opts.signal` in `runLab()`) kills the child process tree cleanly and surfaces `aborted: true`.
 - every `scenarios` entry must exist **and be a file** (a directory is rejected up front).
 - `timeoutMs` rejects negative, non-integer and >600000 values with a message, instead of letting
   Node's native `ERR_OUT_OF_RANGE` surface to the model.
