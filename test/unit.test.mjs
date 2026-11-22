@@ -316,3 +316,102 @@ test('CLI: --version、--help（含新选项）与非法参数校验', () => {
   assert.notEqual(badSvcCfg.status, 0);
   assert.ok(badSvcCfg.stderr.includes('JSON 对象'));
 });
+
+test('v0.4.1: serviceConfigs-only 自动挂载、dshHome XDG 隔离与非目录拒绝', async () => {
+  const onlyCfgSpecs = resolveServiceSpecs(undefined, {
+    '@deepseek-ai/dsh-skill': { depth: 3 },
+    '@deepseek-ai/dsh-tools': { strict: true },
+  });
+  assert.deepEqual(onlyCfgSpecs.defaultConfigs, {
+    '@deepseek-ai/dsh-tools': { strict: true },
+  });
+  assert.deepEqual(onlyCfgSpecs.extras, [
+    { name: '@deepseek-ai/dsh-skill', config: { depth: 3 } },
+  ]);
+
+  const work = mkdtempSync(join(tmpdir(), 'plab-v041-'));
+  try {
+    const { dshRoot, pluginFile } = createFakeDshFixture(work);
+    const notADir = join(work, 'regular-file');
+    writeFileSync(notADir, 'not-a-dir', 'utf8');
+    await assert.rejects(
+      () => runLab({ target: pluginFile, scenarios: [join(work, 'missing.mjs')], dshRoot, nodePath: process.execPath, dshHome: notADir }),
+      /不是目录/,
+    );
+
+    const isoHome = join(work, 'xdg-home');
+    const scenario = join(work, 'check-xdg.mjs');
+    writeFileSync(
+      scenario,
+      [
+        'import { existsSync, readFileSync } from "node:fs";',
+        'import { join } from "node:path";',
+        'export default async ({ step, jobDir }) => {',
+        '  const yml = JSON.parse(readFileSync(join(jobDir, "cordis.yml"), "utf8"));',
+        '  const hasSkill = yml.some(e => e.name === "@deepseek-ai/dsh-skill" && e.config?.depth === 4);',
+        '  const expectedCfg = ' + JSON.stringify(join(isoHome, '.config')) + ';',
+        '  const expectedData = ' + JSON.stringify(join(isoHome, '.local', 'share')) + ';',
+        '  step("serviceConfigs-only 挂载成功", hasSkill, JSON.stringify(yml));',
+        '  step("XDG_CONFIG_HOME 与 XDG_DATA_HOME 隔离并已创建", process.env.XDG_CONFIG_HOME === expectedCfg && process.env.XDG_DATA_HOME === expectedData && existsSync(expectedCfg) && existsSync(expectedData), String(process.env.XDG_CONFIG_HOME));',
+        '};',
+      ].join('\n'),
+      'utf8',
+    );
+    const res = await runLab({
+      target: pluginFile,
+      scenarios: [scenario],
+      serviceConfigs: { '@deepseek-ai/dsh-skill': { depth: 4 } },
+      dshHome: isoHome,
+      dshRoot,
+      nodePath: process.execPath,
+    });
+    assert.equal(res.pass, true, JSON.stringify(res));
+    assert.equal(res.passed, 2);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test('v0.4.1 CLI: --config 与 --service-config 支持 UTF-8 BOM JSON 文件', () => {
+  const work = mkdtempSync(join(tmpdir(), 'plab-v041-cli-bom-'));
+  try {
+    const { dshRoot, pluginFile } = createFakeDshFixture(work);
+    const cfgFile = join(work, 'config-bom.json');
+    const svcCfgFile = join(work, 'svc-bom.json');
+    writeFileSync(cfgFile, '\uFEFF' + JSON.stringify({ marker: 'bom-ok' }), 'utf8');
+    writeFileSync(svcCfgFile, '\uFEFF' + JSON.stringify({ '@deepseek-ai/dsh-skill': { tag: 'bom-svc' } }), 'utf8');
+    const scenario = join(work, 'check-bom.mjs');
+    writeFileSync(
+      scenario,
+      [
+        'import { readFileSync } from "node:fs";',
+        'import { join } from "node:path";',
+        'export default async ({ targetConfig, step, jobDir }) => {',
+        '  const yml = JSON.parse(readFileSync(join(jobDir, "cordis.yml"), "utf8"));',
+        '  step("BOM config 解析正确", targetConfig?.marker === "bom-ok", JSON.stringify(targetConfig));',
+        '  step("BOM service-config 生效", yml.some(e => e.name === "@deepseek-ai/dsh-skill" && e.config?.tag === "bom-svc"), JSON.stringify(yml));',
+        '};',
+      ].join('\n'),
+      'utf8',
+    );
+    const r = spawnSync(
+      process.execPath,
+      [
+        BIN,
+        '--target', pluginFile,
+        '--scenario', scenario,
+        '--config', cfgFile,
+        '--service-config', svcCfgFile,
+        '--dsh-root', dshRoot,
+        '--node', process.execPath,
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.equal(r.status, 0, r.stderr + '\n' + r.stdout);
+    const out = JSON.parse(r.stdout);
+    assert.equal(out.pass, true);
+    assert.equal(out.passed, 2);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});

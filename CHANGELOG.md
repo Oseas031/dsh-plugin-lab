@@ -2,6 +2,14 @@
 
 本文件记录 `dsh-plugin-lab` 的版本变化。版本号本身不表示 npm 发布或远端 CI 状态；二者以各自的实际记录为准。
 
+## [0.4.1]
+
+### Fixed
+
+- `resolveServiceSpecs()`：即使未在 `services` 数组中重复声明，仅通过 `serviceConfigs`（或 CLI `--service-config`）传入的 `@deepseek-ai/dsh-*` 扩展服务包也会自动加入挂载列表并应用对应配置。
+- `runLab()` `dshHome` 隔离加固：拒绝将已存在的普通文件作为 `dshHome` 目录，并在创建隔离目录的同时自动创建并注入 `XDG_CONFIG_HOME`（`.config`）与 `XDG_DATA_HOME`（`.local/share`），防止读取或污染宿主 XDG 缓存/配置。
+- `bin/dsh-plugin-lab.mjs` `parseJsonObject()`：读入 `--config` / `--service-config` 时剥离 UTF-8 BOM（`\uFEFF`），修复 Windows PowerShell 等工具生成的带 BOM JSON 文件解析失败问题。
+
 ## [0.4.0]
 
 ### Added

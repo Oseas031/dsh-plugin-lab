@@ -66,9 +66,9 @@ function parseArgs(argv) {
 function parseJsonObject(raw, flagName = '--config') {
   if (raw === undefined) return undefined;
   const trimmed = String(raw).trim();
-  let text = trimmed;
-  if (!trimmed.startsWith('{') && existsSync(resolve(trimmed)) && statSync(resolve(trimmed)).isFile()) {
-    text = readFileSync(resolve(trimmed), 'utf8');
+  let text = trimmed.replace(/^\uFEFF/, '');
+  if (!text.startsWith('{') && existsSync(resolve(trimmed)) && statSync(resolve(trimmed)).isFile()) {
+    text = readFileSync(resolve(trimmed), 'utf8').replace(/^\uFEFF/, '');
   }
   let parsed;
   try { parsed = JSON.parse(text); } catch (e) {
