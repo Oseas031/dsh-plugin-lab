@@ -29,11 +29,11 @@ npm view dsh-plugin-lab version --registry=https://registry.npmjs.org
 装完仍需把包列入 profile 的 `dsh.profile.bundles`（见下）。
 
 或直接装进 profile：profile package.json 加 `"dsh-plugin-lab": "file:<本包路径>"` 并列入 `dsh.profile.bundles`。
-挂载后该 profile 所有会话可用 `lab.run` 工具（开发 profile 用；生产 profile 慎装——见 dsh.patch.yml）。
+挂载后该 profile 所有会话可用 `lab_run` 工具（开发 profile 用；生产 profile 慎装——见 dsh.patch.yml）。
 
 ## 用法（会话内）
 
-调用 `lab.run` 工具：
+调用 `lab_run` 工具：
 
 ```json
 {
@@ -91,7 +91,7 @@ export default async ({ ctx, defs, step, jobDir, targetEntry, targetConfig }) =>
 ## 工作原理
 
 - 子进程 new 一个真实 cordis Context（boot()，与 DSH profile 同一启动函数）
-- 目标插件按**绝对路径**挂载——改码即生效，下一次 lab.run 拿新的
+- 目标插件按**绝对路径**挂载——改码即生效，下一次 lab_run 拿新的
 - 官方 `@deepseek-ai/*` 服务经 `bareModuleBaseUrl` 从**本机 DSH 安装**解析（Loader 的官方内嵌通道）
 
 ## 安全边界

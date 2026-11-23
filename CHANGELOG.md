@@ -2,6 +2,13 @@
 
 本文件记录 `dsh-plugin-lab` 的版本变化。版本号本身不表示 npm 发布或远端 CI 状态；二者以各自的实际记录为准。
 
+## [0.4.2]
+
+### Changed
+
+- 将注册工具名从 `lab.run` 迁移为纯 `snake_case` 命名 `lab_run`，导出 `TOOL_NAME` 与 `TOOL_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/`，符合 OpenAI 及华为码道 InferHub 函数命名规范（避免含点号触发 HTTP 406 拒单）。
+- `selftest/run.mjs` 增加 `TOOL_NAME_RE` 合规检查与 `@deepseek-ai/dsh-tools` `validateJsonSchemaValue()` 输出 Schema 校验；`test/unit.test.mjs` 同步新增工具命名回归测试。
+
 ## [0.4.1]
 
 ### Fixed

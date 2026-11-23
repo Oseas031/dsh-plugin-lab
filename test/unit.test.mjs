@@ -7,6 +7,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   PKG_VERSION,
+  TOOL_NAME,
+  TOOL_NAME_RE,
   PARAMETERS,
   RESULT_SCHEMA,
   normalizeTimeout,
@@ -53,12 +55,15 @@ test('PKG_VERSION 与 package.json 一致，且 apply() wired 日志版本号一
       env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome },
     });
     assert.equal(r.status, 0, r.stderr);
-    assert.deepEqual(JSON.parse(r.stdout.trim()).tools, ['lab.run']);
+    assert.deepEqual(JSON.parse(r.stdout.trim()).tools, ['lab_run']);
     const lines = readFileSync(join(fakeHome, '.dsh', 'plugin-lab', 'boot.log'), 'utf8')
       .trim().split('\n').map((l) => JSON.parse(l));
     assert.equal(lines[0].kind, 'wired');
-    assert.equal(lines[0].tool, 'lab.run');
+    assert.equal(lines[0].tool, 'lab_run');
     assert.equal(lines[0].version, pkg.version);
+    assert.equal(TOOL_NAME, 'lab_run');
+    assert.match(TOOL_NAME, TOOL_NAME_RE);
+    assert.ok(!TOOL_NAME.includes('.'));
   } finally {
     rmSync(fakeHome, { recursive: true, force: true });
   }

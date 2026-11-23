@@ -1,5 +1,5 @@
-# dsh-plugin-lab — 开发者工具插件（lab.run）
-# 挂载后该 profile 的所有会话都可用 lab.run 工具（开发 profile 用；生产 profile 慎装）。
+# dsh-plugin-lab — 开发者工具插件（lab_run）
+# 挂载后该 profile 的所有会话都可用 lab_run 工具（开发 profile 用；生产 profile 慎装）。
 - insert:
     - id: plugin-lab
       name: 'dsh-plugin-lab'
